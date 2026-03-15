@@ -84,13 +84,8 @@ export default function Carrito() {
     0
   );
 
-  const pagarVisa = () => {
-    Alert.alert("Pago con Visa ✅");
-  };
 
-  const pagarPaypal = () => {
-    Alert.alert("Pago con PayPal ✅");
-  };
+
 
   return (
 
@@ -164,19 +159,19 @@ export default function Carrito() {
         Total: € {total.toFixed(2)}
       </Text>
 
-      <TouchableOpacity
-        style={styles.visa}
-        onPress={pagarVisa}
-      >
+   <TouchableOpacity
+     style={styles.visa}
+     onPress={() => router.push("/PagoVisa")}
+   >
         <Text style={styles.pago}>
           Pagar con Visa
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.paypal}
-        onPress={pagarPaypal}
-      >
+  <TouchableOpacity
+    style={styles.paypal}
+    onPress={() => router.push("/PagoPaypal")}
+  >
         <Text style={styles.pago}>
           Pagar con PayPal
         </Text>
