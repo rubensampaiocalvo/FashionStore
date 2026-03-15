@@ -8,10 +8,8 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
-import { useRouter } from "expo-router";
 
 export default function Carrito() {
-  const router = useRouter();
   const [carrito, setCarrito] = useState<any[]>([]);
 
   useEffect(() => {
@@ -20,123 +18,162 @@ export default function Carrito() {
 
   const cargarCarrito = async () => {
     const data = await AsyncStorage.getItem("carrito");
-    if (data) setCarrito(JSON.parse(data));
+
+    if (data) {
+      const parsed = JSON.parse(data);
+
+      // añadir cantidad si no existe
+      const conCantidad = parsed.map((p: any) => ({
+        ...p,
+        cantidad: p.cantidad || 1,
+      }));
+
+      setCarrito(conCantidad);
+    }
   };
 
-  const eliminarProducto = async (index: number) => {
-    const nuevoCarrito = carrito.filter((_, i) => i !== index);
-    setCarrito(nuevoCarrito);
-    await AsyncStorage.setItem("carrito", JSON.stringify(nuevoCarrito));
+  const guardarCarrito = async (nuevo: any[]) => {
+    setCarrito(nuevo);
+    await AsyncStorage.setItem("carrito", JSON.stringify(nuevo));
+  };
+
+  // SUMAR
+  const sumar = (index: number) => {
+    const nuevo = [...carrito];
+
+    if (nuevo[index].cantidad < nuevo[index].stock) {
+      nuevo[index].cantidad++;
+      guardarCarrito(nuevo);
+    } else {
+      Alert.alert("No hay más stock");
+    }
+  };
+
+  // RESTAR
+  const restar = (index: number) => {
+    const nuevo = [...carrito];
+
+    if (nuevo[index].cantidad > 1) {
+      nuevo[index].cantidad--;
+      guardarCarrito(nuevo);
+    }
+  };
+
+  // ELIMINAR
+  const eliminar = (index: number) => {
+    const nuevo = carrito.filter((_, i) => i !== index);
+    guardarCarrito(nuevo);
   };
 
   const total = carrito.reduce(
-    (sum, item) => sum + parseFloat(item.precio),
+    (sum, item) => sum + item.precio * item.cantidad,
     0
   );
+
+  const pagar = () => {
+    Alert.alert("Pago realizado ✅");
+    AsyncStorage.removeItem("carrito");
+    setCarrito([]);
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.titulo}>🛒 Carrito</Text>
 
-      {carrito.length === 0 ? (
-        <Text style={styles.vacio}>Tu carrito está vacío</Text>
-      ) : (
-        <>
-          <FlatList
-            data={carrito}
-            keyExtractor={(_, i) => i.toString()}
-            renderItem={({ item, index }) => (
-              <View style={styles.card}>
-                <View style={styles.row}>
-                  <View>
-                    <Text style={styles.nombre}>{item.nombre}</Text>
-                    <Text style={styles.precio}>€ {item.precio}</Text>
-                  </View>
+      <FlatList
+        data={carrito}
+        keyExtractor={(_, i) => i.toString()}
+        renderItem={({ item, index }) => (
+          <View style={styles.card}>
+            <Text style={styles.nombre}>{item.nombre}</Text>
 
-                  <TouchableOpacity
-                    style={styles.eliminarBtn}
-                    onPress={() => eliminarProducto(index)}
-                  >
-                    <Text style={styles.eliminarTexto}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          />
+            <Text>Precio: € {item.precio}</Text>
+            <Text>Stock: {item.stock}</Text>
 
-          <Text style={styles.total}>
-            Total: € {total.toFixed(2)}
-          </Text>
+            <View style={styles.cantidadRow}>
+              <TouchableOpacity onPress={() => restar(index)}>
+                <Text style={styles.btn}>➖</Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.visa}
-            onPress={() => router.push("/PagoVisa")}
-          >
-            <Text style={styles.botonTexto}>Pagar con Visa</Text>
-          </TouchableOpacity>
+              <Text style={styles.cantidad}>
+                {item.cantidad}
+              </Text>
 
-          <TouchableOpacity
-            style={styles.paypal}
-            onPress={() => router.push("/PagoPaypal")}
-          >
-            <Text style={styles.botonTexto}>Pagar con PayPal</Text>
-          </TouchableOpacity>
-        </>
-      )}
+              <TouchableOpacity onPress={() => sumar(index)}>
+                <Text style={styles.btn}>➕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => eliminar(index)}
+            >
+              <Text style={styles.eliminar}>
+                Eliminar
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+
+      <Text style={styles.total}>
+        Total: € {total.toFixed(2)}
+      </Text>
+
+      <TouchableOpacity
+        style={styles.pagar}
+        onPress={pagar}
+      >
+        <Text style={{ color: "white" }}>
+          Pagar
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, marginTop: 50 },
+  container: {
+    flex: 1,
+    padding: 20,
+    marginTop: 40,
+  },
 
   titulo: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: "bold",
     marginBottom: 20,
   },
 
-  vacio: {
-    fontSize: 16,
-    textAlign: "center",
-    marginTop: 40,
-  },
-
   card: {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#eee",
     padding: 15,
-    marginBottom: 12,
-    borderRadius: 12,
-  },
-
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    marginBottom: 10,
+    borderRadius: 10,
   },
 
   nombre: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
   },
 
-  precio: {
-    color: "green",
-    marginTop: 4,
-  },
-
-  eliminarBtn: {
-    backgroundColor: "red",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
+  cantidadRow: {
+    flexDirection: "row",
     alignItems: "center",
+    marginTop: 10,
   },
 
-  eliminarTexto: {
-    color: "white",
-    fontWeight: "bold",
+  btn: {
+    fontSize: 22,
+    marginHorizontal: 10,
+  },
+
+  cantidad: {
+    fontSize: 18,
+  },
+
+  eliminar: {
+    color: "red",
+    marginTop: 5,
   },
 
   total: {
@@ -145,24 +182,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
 
-  visa: {
-    backgroundColor: "#1a1f71",
+  pagar: {
+    backgroundColor: "black",
     padding: 15,
-    borderRadius: 10,
-    marginTop: 15,
-    alignItems: "center",
-  },
-
-  paypal: {
-    backgroundColor: "#003087",
-    padding: 15,
-    borderRadius: 10,
     marginTop: 10,
     alignItems: "center",
-  },
-
-  botonTexto: {
-    color: "white",
-    fontWeight: "bold",
+    borderRadius: 10,
   },
 });
